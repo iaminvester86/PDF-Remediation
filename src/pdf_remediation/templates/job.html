@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Job {{ job.id }}{% endblock %}
+{% block content %}
+<h1>Job {{ job.id }}</h1>
+<div id="job-root" data-job="{{ job.id }}" data-status="{{ job.status }}">
+  <p id="job-progress-text" aria-live="polite">
+    {% if job.status == 'fetching' %}Fetching links...{% elif job.status == 'complete' %}All {{ job.progress.total }} file(s) finished.{% else %}{{ job.progress.done }} of {{ job.progress.total }} file(s) finished.{% endif %}
+  </p>
+  <progress id="job-progress" max="{{ job.progress.total or 1 }}" value="{{ job.progress.done }}" aria-labelledby="job-progress-text"></progress>
+  <p>
+    <a class="btn" id="zip-link" href="/jobs/{{ job.id }}/download.zip" {% if job.status != 'complete' %}hidden{% endif %}>Download all results (zip)</a>
+    <a class="btn secondary" id="refresh-link" href="/jobs/{{ job.id }}" {% if job.status == 'complete' %}hidden{% endif %}>Refresh status</a>
+  </p>
+</div>
+
+{% if job.messages %}
+<div class="alert alert-info">
+  <h2>Notes</h2>
+  <ul>{% for m in job.messages %}<li>{{ m }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<h2 id="files-h">Files</h2>
+{% if job.files %}
+<div class="table-wrap">
+<table aria-labelledby="files-h">
+  <thead><tr><th scope="col">File</th><th scope="col">Status</th><th scope="col">PDF/UA-1 machine checks</th>
+    <th scope="col">Errors</th><th scope="col">Warnings</th><th scope="col">Figures needing alt text</th></tr></thead>
+  <tbody id="files-body">
+  {% for f in job.files %}
+    <tr id="row-{{ f.id }}">
+      <th scope="row"><a href="/jobs/{{ job.id }}/files/{{ f.id }}">{{ f.name }}</a></th>
+      <td data-col="status"><span class="badge badge-{{ f.status }}">{{ status_label(f.status) }}</span>{% if f.error %}<br><span class="hint">{{ f.error }}</span>{% endif %}</td>
+      <td data-col="machine">{{ (f.summary.machine_validation if f.summary else '')|capitalize }}</td>
+      <td data-col="errors">{{ f.summary.errors if f.summary else '' }}</td>
+      <td data-col="warnings">{{ f.summary.warnings if f.summary else '' }}</td>
+      <td data-col="figs">{{ f.figures_without_alt if f.figures_without_alt is not none else '' }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% elif job.status != 'fetching' %}
+<p>No PDFs were found for this job.</p>
+{% endif %}
+{% endblock %}

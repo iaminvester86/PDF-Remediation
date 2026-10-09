@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}{% if errors %}Error: {% endif %}New remediation job{% endblock %}
+{% block content %}
+<h1>Make PDFs accessible</h1>
+<p>Add PDF files, a whole folder, zip archives, or links. Each PDF is tagged for screen readers, checked against
+  PDF/UA-1, and given a report. Nothing is uploaded to the internet unless you paste links to fetch.</p>
+
+{% if errors %}
+<div class="alert alert-error" role="alert" id="error-summary" tabindex="-1">
+  <h2>There is a problem</h2>
+  <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+{% if messages %}
+<div class="alert alert-warn"><ul>{% for m in messages %}<li>{{ m }}</li>{% endfor %}</ul></div>
+{% endif %}
+
+<form id="job-form" action="/jobs" method="post" enctype="multipart/form-data" novalidate>
+  <fieldset>
+    <legend>What to remediate</legend>
+    <div class="grid">
+      <div>
+        <label for="files">PDF or zip files</label>
+        <p class="hint" id="files-hint">Select one or more files. Hold Ctrl or Shift to choose several.</p>
+        <input type="file" id="files" name="files" multiple accept=".pdf,.zip,application/pdf,application/zip"
+               aria-describedby="files-hint files-count">
+        <p id="files-count" class="hint" aria-live="polite"></p>
+      </div>
+      <div>
+        <label for="folder">A folder of PDFs</label>
+        <p class="hint" id="folder-hint">All PDFs inside the folder and its subfolders are added. Other files are ignored.</p>
+        <input type="file" id="folder" name="folder" webkitdirectory directory multiple
+               aria-describedby="folder-hint folder-count">
+        <p id="folder-count" class="hint" aria-live="polite"></p>
+      </div>
+    </div>
+    <div class="drop" id="drop-zone" hidden>
+      <p>Or drag and drop PDF files here (pointer users). The file buttons above do the same thing.</p>
+    </div>
+    <label for="urls">Links</label>
+    <p class="hint" id="urls-hint">One link per line. A link to a PDF fetches that file. A link to a web page fetches
+      the PDFs linked from that page on the same site (up to {{ settings.max_discovered_pdfs }}).</p>
+    <textarea id="urls" name="urls" rows="4" aria-describedby="urls-hint"
+              placeholder="https://www.example.gov/report.pdf">{{ form.urls if form else '' }}</textarea>
+  </fieldset>
+
+  <fieldset>
+    <legend>Options</legend>
+    <label for="lang">Document language</label>
+    <p class="hint" id="lang-hint">Used when a file does not declare one. Examples: en-US, es, fr-CA.</p>
+    <input type="text" id="lang" name="lang" value="{{ form.lang if form else settings.default_lang }}"
+           autocomplete="off" spellcheck="false" aria-describedby="lang-hint">
+
+    <label for="engine">Structure engine</label>
+    <select id="engine" name="engine" aria-describedby="engine-hint">
+      <option value="auto">Automatic (recommended)</option>
+      <option value="basic">Built-in engine</option>
+      <option value="odl" {% if not caps.odl %}disabled{% endif %}>OpenDataLoader{% if not caps.odl %} (not installed){% endif %}</option>
+    </select>
+    <p class="hint" id="engine-hint">Automatic uses OpenDataLoader when it is installed (better for tables and
+      multi-column layouts), otherwise the built-in engine.</p>
+
+    <label for="existing_tags">Files that are already tagged</label>
+    <select id="existing_tags" name="existing_tags">
+      <option value="auto">Keep good tags, replace broken ones (recommended)</option>
+      <option value="keep">Always keep existing tags</option>
+      <option value="retag">Always re-tag from scratch</option>
+    </select>
+
+    {% if caps.ai %}
+    <div class="check">
+      <input type="checkbox" id="ai" name="ai" value="on" aria-describedby="ai-hint">
+      <label class="inline" for="ai">Suggest alt text with AI ({{ caps.ai_model }})</label>
+    </div>
+    <p class="hint" id="ai-hint">Suggestions are shown for you to review. Images are sent to {{ caps.ai_url }}.</p>
+    <div class="check">
+      <input type="checkbox" id="accept_ai_alt" name="accept_ai_alt" value="on">
+      <label class="inline" for="accept_ai_alt">Write AI suggestions into the PDFs without review (not recommended for public documents)</label>
+    </div>
+    {% else %}
+    <p class="hint">AI alt-text suggestions are off. To enable them, run a local model server (for example Ollama)
+      and start the app with <code>PDFREM_AI_ENABLED=1</code>.</p>
+    {% endif %}
+  </fieldset>
+
+  <div id="upload-status" aria-live="polite" class="hint"></div>
+  <progress id="upload-progress" max="100" value="0" hidden aria-labelledby="upload-status"></progress>
+  <p><button type="submit" class="btn" id="submit-btn">Start remediation</button></p>
+</form>
+
+<section aria-labelledby="caps-h">
+  <h2 id="caps-h">Components on this computer</h2>
+  <ul>
+    <li>PDF/UA validator (veraPDF): {{ 'installed' if caps.verapdf else 'not installed. Run scripts/fetch-verapdf.sh' }}</li>
+    <li>OpenDataLoader structure engine: {{ 'installed' if caps.odl else 'not installed (optional)' }}</li>
+    <li>OCR for scanned pages: {{ 'installed' if caps.ocr else 'not installed (optional)' }}</li>
+    <li>AI suggestions: {{ 'on, ' ~ caps.ai_model if caps.ai else 'off' }}</li>
+  </ul>
+</section>
+
+<section aria-labelledby="recent-h">
+  <h2 id="recent-h">Recent jobs</h2>
+  {% if jobs %}
+  <div class="table-wrap">
+  <table>
+    <caption class="visually-hidden">Recent jobs, newest first</caption>
+    <thead><tr><th scope="col">Job</th><th scope="col">Created</th><th scope="col">Files</th><th scope="col">Status</th></tr></thead>
+    <tbody>
+    {% for j in jobs %}
+      <tr><td><a href="/jobs/{{ j.id }}">Job {{ j.id }}</a></td><td>{{ j.created }}</td>
+        <td>{{ j.progress.done }} of {{ j.progress.total }} done</td><td>{{ j.status|capitalize }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p>No jobs yet.</p>
+  {% endif %}
+</section>
+{% endblock %}
