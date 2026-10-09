@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}PDF Remediation{% endblock %} | PDF Remediation</title>
+<link rel="stylesheet" href="/static/app.css">
+<script src="/static/app.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+<header class="site">
+  <div class="container">
+    <a class="brand" href="/">PDF Remediation</a>
+    <nav aria-label="Main">
+      <a href="/">New job</a>
+      <a href="/#recent-h">Recent jobs</a>
+      <a href="/api/docs">API</a>
+    </nav>
+  </div>
+</header>
+<main id="main" class="container" tabindex="-1">
+{% block content %}{% endblock %}
+</main>
+<footer class="site">
+  <div class="container">
+    <p>pdf-remediation {{ version }}. Files are processed on this computer{% if caps.ai %}; AI requests go to {{ caps.ai_url }}{% endif %}.
+      Remediated files still need human review before publication.</p>
+  </div>
+</footer>
+</body>
+</html>

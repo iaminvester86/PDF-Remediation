@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install
+        run: pip install -e ".[dev,odl]"
+      - name: Fetch veraPDF
+        shell: bash
+        run: mvn -q -B -f scripts/verapdf-pom.xml dependency:copy-dependencies -DoutputDirectory="$PWD/vendor/verapdf/lib"
+      - name: Tests
+        run: pytest
+      - name: Core licence gate (no GPL/AGPL in the core dependency closure)
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.13'
+        run: |
+          python -m venv /tmp/lic && /tmp/lic/bin/pip install -q . pip-licenses
+          if /tmp/lic/bin/pip-licenses | grep -E -i "GPL|UNKNOWN"; then echo "Disallowed licence"; exit 1; fi

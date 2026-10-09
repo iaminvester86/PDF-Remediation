@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pdf-remediation"
+version = "0.1.0"
+description = "Local-first PDF accessibility remediation (PDF/UA-1) with an accessible web UI and CLI"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.11"
+authors = [{ name = "PDF-Remediation contributors" }]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+  "Topic :: Text Processing",
+]
+# Core dependencies must be permissive or MPL licensed (see docs/research/04).
+dependencies = [
+  "pikepdf>=10.0",          # MPL-2.0: structure tree and content stream writing
+  "pypdfium2>=5.0",         # BSD-3/Apache-2.0: rendering, text, object geometry
+  "pillow>=10.0",           # HPND: image comparison and crops
+  "fastapi>=0.110",         # MIT
+  "uvicorn>=0.29",          # BSD-3
+  "jinja2>=3.1",            # BSD-3
+  "python-multipart>=0.0.9",# Apache-2.0
+  "httpx>=0.27",            # BSD-3: URL fetching and AI providers
+  "fonttools>=4.40",        # MIT: glyph names to Unicode for ToUnicode repair
+]
+
+[project.optional-dependencies]
+# OpenDataLoader structure engine (Apache-2.0, needs Java 11+).
+odl = ["opendataloader-pdf>=2.5"]
+# OCR for scanned pages (MPL-2.0; needs Tesseract and Ghostscript installed separately).
+ocr = ["ocrmypdf>=16"]
+dev = ["pytest>=8", "reportlab>=4"]
+
+[project.scripts]
+pdfrem = "pdf_remediation.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pdf_remediation"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+pythonpath = ["tests"]

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}{{ f.name }}{% endblock %}
+{% block content %}
+<p><a href="/jobs/{{ job.id }}">Back to job {{ job.id }}</a></p>
+<h1>{{ f.name }}</h1>
+
+{% if saved == 'ok' %}
+<div class="alert alert-info" role="status"><p>Your changes were saved and the file was checked again.</p></div>
+{% elif saved == 'partial' %}
+<div class="alert alert-warn" role="status"><p>Changes were saved, but some figures could not be marked as decorative automatically. See the issues below.</p></div>
+{% endif %}
+
+{% if not r %}
+<p>This file is still being processed. <a href="/jobs/{{ job.id }}/files/{{ f.id }}">Refresh</a></p>
+{% else %}
+  {% if r.outputs %}
+  <h2 id="downloads-h">Downloads</h2>
+  <ul aria-labelledby="downloads-h">
+    {% if r.outputs.pdf %}<li><a href="/jobs/{{ job.id }}/files/{{ f.id }}/download/pdf">Remediated PDF</a></li>{% endif %}
+    <li><a href="/jobs/{{ job.id }}/files/{{ f.id }}/download/html">Report (HTML)</a></li>
+    <li><a href="/jobs/{{ job.id }}/files/{{ f.id }}/download/json">Report (JSON)</a></li>
+    <li><a href="/jobs/{{ job.id }}/files/{{ f.id }}/download/original">Original file</a></li>
+  </ul>
+  {% endif %}
+
+  {% if r.figures %}
+  <section aria-labelledby="review-h">
+    <h2 id="review-h">Review figures ({{ r.figures|length }})</h2>
+    <p>Write a short description of what each image communicates, or mark it decorative if it adds no information.
+      Saving updates the PDF and runs the checks again.</p>
+    <form method="post" action="/jobs/{{ job.id }}/files/{{ f.id }}/figures">
+      {% for fig in r.figures %}
+      <fieldset class="figure-card">
+        <legend>Figure {{ fig.index + 1 }}, page {{ fig.page + 1 }}</legend>
+        <div>
+          {% if fig.bbox %}<img src="/jobs/{{ job.id }}/files/{{ f.id }}/figures/{{ fig.index }}.png"
+               alt="Figure {{ fig.index + 1 }} as it appears in the document (shown for review)">{% endif %}
+        </div>
+        <div>
+          {% if fig.context %}<p class="hint">Nearby text: {{ fig.context[:240] }}</p>{% endif %}
+          <label for="alt-{{ fig.index }}">Alternative text</label>
+          {% if fig.ai and fig.ai.alt and not fig.alt %}<p class="hint" id="ai-{{ fig.index }}">AI suggestion, pre-filled for your review ({{ fig.ai.audit.model }}).</p>{% endif %}
+          <textarea id="alt-{{ fig.index }}" name="alt-{{ fig.index }}" rows="3"
+            {% if fig.ai and fig.ai.alt and not fig.alt %}aria-describedby="ai-{{ fig.index }}"{% endif %}>{{ fig.alt if fig.alt else (fig.ai.alt if fig.ai and fig.ai.alt else '') }}</textarea>
+          <div class="check">
+            <input type="checkbox" id="decorative-{{ fig.index }}" name="decorative-{{ fig.index }}" value="on"
+                   {% if fig.ai and fig.ai.decorative and not fig.alt %}checked{% endif %}>
+            <label class="inline" for="decorative-{{ fig.index }}">Decorative (hide from screen readers)</label>
+          </div>
+        </div>
+      </fieldset>
+      {% endfor %}
+      <p><button type="submit" class="btn">Save and check again</button></p>
+    </form>
+  </section>
+  {% endif %}
+
+  {% include "_report_body.html" %}
+{% endif %}
+{% endblock %}

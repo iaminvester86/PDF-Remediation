@@ -1,0 +1,92 @@
+{# Shared report body. Expects `r` (a pipeline result) and optional `hlevel` offset. #}
+<section aria-labelledby="summary-h">
+  <h2 id="summary-h">Summary</h2>
+  {% if r.error %}
+  <div class="alert alert-error" role="alert"><p><strong>Remediation failed:</strong> {{ r.error }}</p></div>
+  {% endif %}
+  <dl class="summary">
+    <div><dt>Status</dt><dd><span class="badge badge-{{ r.status }}">{{ status_label(r.status) }}</span></dd></div>
+    {% if r.summary %}
+    <div><dt>Machine validation (veraPDF, PDF/UA-1)</dt>
+      <dd>{% if r.summary.machine_validation == 'pass' %}Pass{% elif r.summary.machine_validation == 'fail' %}Fail{% else %}Not run{% endif %}
+        {% if r.verapdf and not r.verapdf.available %}<span class="hint">({{ r.verapdf.message }})</span>{% endif %}</dd></div>
+    <div><dt>Issues</dt><dd>{{ r.summary.errors }} error(s), {{ r.summary.warnings }} warning(s)</dd></div>
+    <div><dt>Human verification</dt><dd>Not done. A person must check reading order, alt text and headings before this document is published.</dd></div>
+    {% endif %}
+    {% if r.document %}
+    <div><dt>Title</dt><dd>{{ r.document.title }} <span class="hint">(source: {{ r.document.title_source }})</span></dd></div>
+    <div><dt>Language</dt><dd>{{ r.document.lang }}</dd></div>
+    {% endif %}
+    {% if r.facts %}<div><dt>Pages</dt><dd>{{ r.facts.pages }}</dd></div>{% endif %}
+    {% if r.engine %}<div><dt>Structure engine</dt><dd>{{ r.engine }}</dd></div>{% endif %}
+  </dl>
+  <p class="hint">A machine pass means the file meets the PDF/UA-1 checks a computer can make. It does not
+    prove the document is accessible: only human review can confirm that alt text, headings and reading order
+    are correct.</p>
+</section>
+
+{% if r.issues %}
+<section aria-labelledby="issues-h">
+  <h2 id="issues-h">Issues ({{ r.issues|length }})</h2>
+  <div class="table-wrap" role="region" aria-label="Issues table, scrolls horizontally" tabindex="0">
+  <table>
+    <caption class="visually-hidden">Issues found, most severe first</caption>
+    <thead><tr><th scope="col">Severity</th><th scope="col">Page</th><th scope="col">Issue</th>
+      <th scope="col">WCAG</th><th scope="col">Matterhorn</th><th scope="col">Source</th></tr></thead>
+    <tbody>
+    {% for i in r.issues %}
+      <tr>
+        <td><span class="sev sev-{{ i.severity }}">{{ i.severity|capitalize }}</span></td>
+        <td>{{ i.page or '' }}</td>
+        <td>{{ i.message }}{% if i.fix %}<br><span class="hint">How to fix: {{ i.fix }}</span>{% endif %}
+          <br><code class="rule">{{ i.rule }}</code></td>
+        <td>{{ i.wcag|join(', ') }}</td>
+        <td>{{ i.matterhorn|join(', ') }}</td>
+        <td>{{ i.source }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endif %}
+
+{% if r.headings %}
+<section aria-labelledby="outline-h">
+  <h2 id="outline-h">Heading outline</h2>
+  <ul class="outline">
+  {% for h in r.headings %}
+    <li class="lvl-{{ h.level }}">H{{ h.level }}: {{ h.text }} <span class="hint">(page {{ h.page + 1 }})</span></li>
+  {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<section aria-labelledby="checks-h">
+  <h2 id="checks-h">Safety checks</h2>
+  <ul>
+    {% if r.visual %}<li>Appearance unchanged: {{ 'Yes' if r.visual.identical else 'No, pages ' ~ (r.visual.changed_pages|join(', ')) }}</li>{% endif %}
+    {% if r.text %}<li>Text unchanged: {{ 'Yes' if r.text.identical else 'No (similarity ' ~ r.text.similarity ~ ')' }}</li>{% endif %}
+  </ul>
+</section>
+
+{% if r.verapdf and r.verapdf.failed_rules %}
+<section aria-labelledby="vera-h">
+  <h2 id="vera-h">veraPDF failed rules</h2>
+  <ul>
+  {% for v in r.verapdf.failed_rules %}
+    <li><strong>{{ v.clause }} test {{ v.test }}</strong>: {{ v.description }} ({{ v.failed_checks }} check(s))</li>
+  {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+{% if r.steps %}
+<details>
+  <summary>Processing log</summary>
+  <ol>
+  {% for s in r.steps %}<li>{{ s.step }}: {{ s.detail }} <span class="hint">({{ s.t }} s)</span></li>{% endfor %}
+  </ol>
+  {% if r.traceback %}<pre>{{ r.traceback }}</pre>{% endif %}
+</details>
+{% endif %}
