@@ -301,9 +301,8 @@ These are known gaps, listed so nobody mistakes the prototype for a finished pro
   - signed policy profiles.
 - **Validation speed:** veraPDF starts a new Java process for each file. That took about 1.8 seconds for a one-page file here, most of it Java start-up. A persistent validation service is planned.
 - **Not yet verified:**
-  - CI has not run on GitHub yet;
   - the Docker image has not been built;
-  - `scripts/install.ps1` has not been run on Windows.
+  - `scripts/install.ps1` has not been run by hand on Windows. CI installs and tests the package on Windows, but it does not run the script.
 
   (`scripts/install.sh` was run end to end on Linux.)
 - **Not packaged yet:** there is no Windows installer, air-gapped bundle, SBOM or signed release.
