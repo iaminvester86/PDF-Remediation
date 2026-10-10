@@ -25,14 +25,13 @@ jobs:
           distribution: temurin
           java-version: "21"
       - name: Install
-        run: pip install -e ".[dev,odl]"
-      - name: Fetch veraPDF
-        shell: bash
-        run: mvn -q -B -f scripts/verapdf-pom.xml dependency:copy-dependencies -DoutputDirectory="$PWD/vendor/verapdf/lib"
+        run: pip install -e ".[dev,all]"
+      - name: Install Java engines (veraPDF, checksum-verified)
+        run: pdfrem install-engines
       - name: Tests
         run: pytest
-      - name: Core licence gate (no GPL/AGPL in the core dependency closure)
+      - name: Licence gate (no GPL/AGPL in the core + OCR dependency closure)
         if: matrix.os == 'ubuntu-latest' && matrix.python == '3.13'
         run: |
-          python -m venv /tmp/lic && /tmp/lic/bin/pip install -q . pip-licenses
+          python -m venv /tmp/lic && /tmp/lic/bin/pip install -q ".[ocr]" pip-licenses
           if /tmp/lic/bin/pip-licenses | grep -E -i "GPL|UNKNOWN"; then echo "Disallowed licence"; exit 1; fi

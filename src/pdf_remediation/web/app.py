@@ -3,37 +3,26 @@ from __future__ import annotations
 
 import hmac
 import io
-from contextlib import asynccontextmanager
 import re
 import shutil
 import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import __version__
-from .config import Settings
-from .engines import ocr_available, odl_available
-from .intake import InputError, InputFile, extract_zip, looks_like_pdf, safe_relpath
-from .jobs import JobManager
-from .report import env
-from .verify import verapdf_command
+from .. import __version__
+from ..config import Settings
+from ..inputs import InputError, InputFile, extract_zip, looks_like_pdf, safe_relpath
+from ..jobs import JobManager
+from ..pdf.pdfium import render_crop
+from ..report import env
+from ..status import capabilities, describe
 
 STATIC = Path(__file__).parent / "static"
 LANG_RE = re.compile(r"^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$")
-
-
-def capabilities(settings: Settings) -> dict:
-    return {
-        "verapdf": verapdf_command(settings) is not None,
-        "odl": odl_available(settings.java_cmd),
-        "ocr": ocr_available(),
-        "ai": settings.ai_enabled,
-        "ai_model": settings.ai_model,
-        "ai_url": settings.ai_base_url,
-    }
 
 
 def create_app(settings: Settings | None = None, manager: JobManager | None = None) -> FastAPI:
@@ -54,7 +43,8 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
 
     def render(request: Request, template: str, status: int = 200, **ctx) -> HTMLResponse:
         html = env().get_template(template).render(request=request, version=__version__,
-                                                   caps=capabilities(settings), settings=settings, **ctx)
+                                                   caps=capabilities(settings), components=describe(settings),
+                                                   settings=settings, **ctx)
         return HTMLResponse(html, status_code=status)
 
     @app.middleware("http")
@@ -99,6 +89,7 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
                          engine: str = Form(default="auto"),
                          lang: str = Form(default=""),
                          existing_tags: str = Form(default="auto"),
+                         ocr: str = Form(default="auto"),
                          ai: str = Form(default=""),
                          accept_ai_alt: str = Form(default="")):
         wants_json = "application/json" in request.headers.get("accept", "")
@@ -108,6 +99,8 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
             errors.append("Language must be a code such as en-US or es.")
         if engine not in ("auto", "basic", "odl"):
             errors.append("Choose a valid structure engine.")
+        if ocr not in ("auto", "off"):
+            errors.append("Choose a valid OCR option.")
         if existing_tags not in ("auto", "keep", "retag"):
             errors.append("Choose a valid option for existing tags.")
         url_list = [u.strip() for u in re.split(r"[\r\n]+", urls or "") if u.strip()]
@@ -166,8 +159,8 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
                     return JSONResponse({"errors": errors, "messages": messages}, status_code=400)
                 return render(request, "index.html", status=400, jobs=manager.list_jobs(), errors=errors,
                               messages=messages, form={"urls": urls, "lang": lang, "engine": engine,
-                                                       "existing_tags": existing_tags})
-            options = {"engine": engine, "lang": lang, "existing_tags": existing_tags,
+                                                       "existing_tags": existing_tags, "ocr": ocr})
+            options = {"engine": engine, "lang": lang, "existing_tags": existing_tags, "ocr": ocr,
                        "ai": bool(ai) and settings.ai_enabled, "accept_ai_alt": bool(accept_ai_alt) and bool(ai)}
             job_id = manager.create_job(inputs, url_list, options, messages)
         finally:
@@ -228,7 +221,6 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
 
     @app.get("/jobs/{job_id}/files/{fid}/figures/{index}.png")
     def figure_png(job_id: str, fid: str, index: int):
-        from .pdfium_util import render_crop
         _job_or_404(job_id)
         result = manager.result(job_id, fid) or {}
         figs = {f["index"]: f for f in result.get("figures", [])}

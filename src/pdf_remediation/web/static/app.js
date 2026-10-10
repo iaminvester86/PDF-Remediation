@@ -78,7 +78,7 @@
         data.append("folder", f, f.name);
         data.append("folder_relpaths", f.webkitRelativePath || f.name);
       }
-      ["urls", "lang", "engine", "existing_tags"].forEach(function (name) {
+      ["urls", "lang", "engine", "existing_tags", "ocr"].forEach(function (name) {
         var el = form.elements[name];
         if (el) data.append(name, el.value);
       });

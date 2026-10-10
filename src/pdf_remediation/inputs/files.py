@@ -1,4 +1,4 @@
-"""Gather inputs (files, folders, zip archives) and inspect PDFs before processing."""
+"""Local inputs: files, folders (recursive) and zip archives, plus a first inspection of each PDF."""
 from __future__ import annotations
 
 import re
@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 import pikepdf
-import pypdfium2 as pdfium
 
 PDF_MAGIC = b"%PDF-"
 
@@ -141,16 +140,4 @@ def inspect_pdf(path: Path) -> dict:
             "producer": str(pdf.docinfo.get("/Producer", "")) if pdf.docinfo else "",
             "creator": str(pdf.docinfo.get("/Creator", "")) if pdf.docinfo else "",
         }
-    doc = pdfium.PdfDocument(str(path))
-    try:
-        image_only = []
-        for i in range(len(doc)):
-            page = doc[i]
-            if page.get_textpage().count_chars() > 0:
-                continue
-            if any(o.type == pdfium.raw.FPDF_PAGEOBJ_IMAGE for o in page.get_objects(max_depth=2)):
-                image_only.append(i + 1)
-        facts["image_only_pages"] = image_only
-    finally:
-        doc.close()
     return facts

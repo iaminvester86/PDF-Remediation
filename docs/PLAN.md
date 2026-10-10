@@ -15,20 +15,26 @@ Supporting research (read alongside this plan):
 
 ---
 
-## 0. Implementation status (v0.1, 2026-10-09)
+## 0. Implementation status (v0.1, updated 2026-10-10)
 
 A working prototype is in `src/pdf_remediation/` (see the README for usage). Against the phases below:
 
 | Area | Built | Not yet built |
 |---|---|---|
 | Inputs | Multiple files, folders (recursive), zip archives, links to PDFs, links to pages (same-site PDF discovery), SSRF guard | Site crawler beyond one page, scanner inventory import |
-| Phase 1 core | Intake checks, normaliser, built-in tagger, OpenDataLoader adapter, keep/repair/re-tag existing tags (alt text carried over), finisher, veraPDF sidecar, 20 semantic QA rules, rendering and text gates, HTML/JSON/CSV reports, CLI | Persistent veraPDF process, document-model JSON schema as a public contract |
-| Phase 2 hard content | Link and form-field tagging, ToUnicode repair (glyph names and ActualText), ActualText preservation, OCR hook | Content re-marking engine (WP 2.2), table tagging in the built-in engine, font embedding |
+| Phase 1 core | Intake checks, normaliser, built-in tagger, OpenDataLoader adapter, keep/repair/re-tag existing tags (alt text carried over), finisher, veraPDF sidecar with a checksum-verified installer (`pdfrem install-engines`), 20 semantic QA rules, rendering and text gates, HTML/JSON/CSV reports, CLI, install scripts | Persistent veraPDF process, document-model JSON schema as a public contract |
+| Phase 2 hard content | Link and form-field tagging, ToUnicode repair (glyph names and ActualText), ActualText preservation, Python OCR (RapidOCR default, Tesseract optional) run only on pages without text, invisible text layer that follows page rotation, built-in table tagging (ruled grids with ColSpan/RowSpan and multi-row headers; borderless aligned tables with prose guards; "possible table" warnings) | Content re-marking engine (WP 2.2), row headers, nested and multi-page tables, OCR deskew and clean-up, OCR of scanned regions on pages that also have text, word-level OCR review, font embedding |
 | Phase 3 AI | OpenAI-compatible adapter (local servers), local-only policy, untrusted-data fencing, per-call audit, review-before-write | Native cloud adapters, Entra/AWS SSO/GCP ADC sign-in, CLI bridge, policy profiles as signed files, model evaluation |
 | Phase 4 UI | Accessible web app (axe-core: 0 violations), live job progress, figure review with alt text and decorative marking, re-validation, zip download | Reading-order, heading and table editors, screen-reader preview, multi-user sign-in and roles |
 | Phase 5 | Dockerfile (not yet built in CI), CI workflow with licence gate | Windows installer, air-gapped bundle, SBOM, signed releases, pilots |
 
 Measured on 6 real-world PDFs available in the build environment (including the three source documents supplied for this plan): all 6 pass veraPDF PDF/UA-1 machine checks after remediation with both engines, with rendering and extracted text unchanged. Before the fixes found by that sweep (ActualText being stripped, invalid Unicode maps, over-detected headings), 4 of 6 failed. Six files is a smoke test, not the evaluation corpus required by gate G0.
+
+Changes on 2026-10-10:
+
+- **OCR uses RapidOCR, not OCRmyPDF.** RapidOCR is Apache-2.0, its models ship inside the wheel, and it needs no Ghostscript (AGPL) or system packages. This removes risk R11 for the default install. Tesseract stays available as an optional engine.
+- **OCR'd documents use the built-in engine in `auto` mode.** This follows a measurement: OpenDataLoader tagged the scan image as a Figure and changed the OCR text, so the text gate failed.
+- **Table tagging measured on synthetic fixtures.** On four test tables, the built-in engine was correct on all four. OpenDataLoader missed the borderless table and tagged two sub-headings as data cells. Four synthetic tables do not establish which engine is better on real documents. That comparison belongs in the G0 evaluation corpus.
 
 ## 1. Executive summary
 
@@ -320,7 +326,7 @@ Durations assume the team in section 9. Phases overlap. Each phase ends with a *
 |---|---|---|
 | 0.1 Repo and CI | `src/` layout, `uv` lock with hashes, ruff, mypy, pytest, pre-commit; CI matrix (Linux and Windows, Python 3.11 to 3.13, JRE 17/21); licence gate; CycloneDX SBOM; CodeQL | Green CI on an empty package |
 | 0.2 ADRs | Write D1 to D13 as ADRs | `docs/adr/0001..0013` |
-| 0.3 Corpus | Collect PDF Association PDF/UA reference files and Matterhorn reference suite (check licence); veraPDF corpus; public-domain U.S. federal PDFs across categories; state and education PDFs whose licence permits redistribution; synthetic generator extended from spike 001 with known ground truth. Categories: untagged born-digital, badly tagged, scanned, forms, table-heavy, multi-column, multilingual, math, damaged. | ≥150 documents, ≥50 with gold structure annotations (2 annotators, adjudicated) |
+| 0.3 Corpus | Collect PDF Association PDF/UA reference files and Matterhorn reference suite (check licence); veraPDF corpus; public-domain U.S. federal PDFs across categories; state and education PDFs whose licence permits redistribution; synthetic generator extended from spike 001 with known ground truth. Categories: untagged born-digital, badly tagged, scanned, forms, table-heavy, multi-column, multilingual, math, damaged. | ≥200 documents, ≥50 with gold structure annotations (2 annotators, adjudicated) |
 | 0.4 Evaluation harness | Metrics: veraPDF pass and rule counts; role precision/recall/F1 per tag type; reading-order Kendall tau; table header accuracy; heading-level accuracy; alt-text presence and lint flags; visual diff; text diff; pages/hour | `pdfrem-eval` command and an HTML scoreboard |
 | 0.5 Baseline | Run (a) ODL alone, (b) ODL + spike finisher, (c) ODL hybrid (docling) over the corpus | Baseline report; set the *(H)* targets |
 | 0.6 Legal and naming | Licence policy review, project name and trademark search, contributor licence (DCO) | Signed-off policy |

@@ -5,8 +5,9 @@ editing the drawing itself: one text-showing operator, one ``Do``, one inline
 image, one ``sh``, or one path (construction operators through the painting
 operator). PDFium's top-level page objects appear in the same order as these
 operators, which lets us attach text, geometry and font facts to each item.
-Spike-era probes on LibreOffice and reportlab output matched one-to-one; when a
-page does not match, the caller falls back to geometry-free tagging.
+This pairing was verified one-to-one on LibreOffice, reportlab and Chrome
+output. When a page does not match, the caller falls back to tagging in content
+order without geometry.
 """
 from __future__ import annotations
 
@@ -14,7 +15,7 @@ from dataclasses import dataclass
 
 import pikepdf
 
-from .pdfium_util import PObj
+from .pdfium import PObj
 
 SHOW_OPS = {"Tj", "TJ", "'", '"'}
 PATH_CONSTRUCT = {"m", "l", "c", "v", "y", "h", "re"}

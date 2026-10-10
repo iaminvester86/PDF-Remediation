@@ -24,7 +24,7 @@ from urllib.parse import urlsplit
 import httpx
 
 from .config import Settings
-from .netguard import BlockedURL, host_is_internal
+from .inputs.netguard import BlockedURL, host_is_internal
 
 SYSTEM_PROMPT = (
     "You write alternative text for images in PDF documents for screen reader users. "

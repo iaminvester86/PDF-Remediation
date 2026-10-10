@@ -2,8 +2,9 @@
 {% block title %}{% if errors %}Error: {% endif %}New remediation job{% endblock %}
 {% block content %}
 <h1>Make PDFs accessible</h1>
-<p>Add PDF files, a whole folder, zip archives, or links. Each PDF is tagged for screen readers, checked against
-  PDF/UA-1, and given a report. Nothing is uploaded to the internet unless you paste links to fetch.</p>
+<p>Add PDF files, a whole folder, zip archives, or links. Each PDF is checked, scanned pages are converted to
+  text (OCR), and the document is tagged for screen readers: headings, lists, tables, figures and links. Every
+  file is then validated against PDF/UA-1 and given a report. Processing happens on this computer.</p>
 
 {% if errors %}
 <div class="alert alert-error" role="alert" id="error-summary" tabindex="-1">
@@ -60,6 +61,15 @@
     <p class="hint" id="engine-hint">Automatic uses OpenDataLoader when it is installed (better for tables and
       multi-column layouts), otherwise the built-in engine.</p>
 
+    <label for="ocr">Scanned pages</label>
+    <select id="ocr" name="ocr" aria-describedby="ocr-hint">
+      <option value="auto">Recognise text automatically (OCR) when a page has none (recommended)</option>
+      <option value="off">Do not run OCR</option>
+    </select>
+    <p class="hint" id="ocr-hint">{% if caps.ocr %}OCR engine: {{ caps.ocr_engines|join(', ') }}. It runs on this
+      computer and only on pages that are images without text.{% else %}No OCR engine is installed, so scanned
+      pages will be reported but not fixed. Install one with <code>pip install -e ".[ocr]"</code>.{% endif %}</p>
+
     <label for="existing_tags">Files that are already tagged</label>
     <select id="existing_tags" name="existing_tags">
       <option value="auto">Keep good tags, replace broken ones (recommended)</option>
@@ -91,10 +101,9 @@
 <section aria-labelledby="caps-h">
   <h2 id="caps-h">Components on this computer</h2>
   <ul>
-    <li>PDF/UA validator (veraPDF): {{ 'installed' if caps.verapdf else 'not installed. Run scripts/fetch-verapdf.sh' }}</li>
-    <li>OpenDataLoader structure engine: {{ 'installed' if caps.odl else 'not installed (optional)' }}</li>
-    <li>OCR for scanned pages: {{ 'installed' if caps.ocr else 'not installed (optional)' }}</li>
-    <li>AI suggestions: {{ 'on, ' ~ caps.ai_model if caps.ai else 'off' }}</li>
+  {% for name, ready, detail in components %}
+    <li>{{ name }}: <strong>{{ 'Ready' if ready else 'Not available' }}</strong>. {{ detail[:1]|upper }}{{ detail[1:] }}.</li>
+  {% endfor %}
   </ul>
 </section>
 

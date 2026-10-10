@@ -17,9 +17,9 @@ from urllib.parse import unquote, urljoin, urlsplit
 
 import httpx
 
-from . import __version__
-from .config import Settings
-from .intake import PDF_MAGIC, InputFile, safe_relpath
+from .. import __version__
+from ..config import Settings
+from .files import PDF_MAGIC, InputFile, safe_relpath
 from .netguard import BlockedURL, check_public_url
 
 USER_AGENT = f"pdf-remediation/{__version__} (+accessibility remediation)"

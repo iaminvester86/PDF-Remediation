@@ -1,5 +1,0 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0"><modelVersion>4.0.0</modelVersion>
-<groupId>x</groupId><artifactId>vera-fetch</artifactId><version>1</version>
-<dependencies>
- <dependency><groupId>org.verapdf.apps</groupId><artifactId>greenfield-apps</artifactId><version>1.28.2</version></dependency>
-</dependencies></project>

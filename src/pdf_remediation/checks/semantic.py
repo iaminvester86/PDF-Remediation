@@ -15,11 +15,11 @@ from dataclasses import dataclass, field
 import pikepdf
 import pypdfium2 as pdfium
 
-from .finisher import existing_title, is_generic_title
-from .issues import Issue
-from .pdfium_util import PObj, read_page
-from .structtree import Elem, figures, read_tree
-from .tagger import BULLET_RE
+from ..pdf.finisher import existing_title, is_generic_title
+from ..issues import Issue
+from ..pdf.pdfium import PObj, read_page
+from ..pdf.structure import Elem, figures, read_tree
+from ..tagging.layout import BULLET_RE
 
 ALT_PLACEHOLDER_RE = re.compile(
     r"^\s*(image|img|picture|pic|photo|graphic|figure|chart|logo|icon|untitled|alt|alt text|"
@@ -119,7 +119,7 @@ def _run(pdf: pikepdf.Pdf, doc: pdfium.PdfDocument, res: QAResult) -> None:
         if big_image and not has_text:
             add(Issue("sqa.scanned-page", "error", "Page is an image with no text layer. It needs OCR.",
                       page=i + 1, wcag=["1.1.1", "1.4.5"], matterhorn=["08-001"],
-                      fix="Run OCR (install the 'ocr' extra plus Tesseract), then remediate again."))
+                      fix="Remediate again with OCR set to 'auto' (needs the 'ocr' extra: pip install -e \".[ocr]\")."))
 
     for font, page in non_embedded.items():
         add(Issue("sqa.font-not-embedded", "error",

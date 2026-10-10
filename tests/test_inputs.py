@@ -8,9 +8,9 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import pytest
 
 from conftest import make_sample
-from pdf_remediation.fetch import fetch_inputs
-from pdf_remediation.intake import collect_paths, extract_zip, safe_relpath
-from pdf_remediation.netguard import BlockedURL, check_public_url
+from pdf_remediation.inputs import fetch_inputs
+from pdf_remediation.inputs import collect_paths, extract_zip, safe_relpath
+from pdf_remediation.inputs.netguard import BlockedURL, check_public_url
 
 
 def test_folder_is_scanned_recursively(tmp_path):

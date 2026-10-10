@@ -15,12 +15,11 @@ import zipfile
 from concurrent.futures import Executor, Future, ProcessPoolExecutor
 from pathlib import Path
 
+from .checks import alt_needs_work
 from .config import Settings
-from .edit import apply_figure_decisions
-from .fetch import fetch_inputs
-from .intake import InputFile
+from .inputs import InputFile, fetch_inputs
+from .pdf.edit import apply_figure_decisions
 from .pipeline import Options, remediate_file, reverify
-from .qa import alt_needs_work
 
 ID_RE = re.compile(r"^[a-f0-9]{12}$")
 
