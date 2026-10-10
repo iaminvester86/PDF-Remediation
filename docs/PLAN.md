@@ -32,6 +32,8 @@ Measured on 6 real-world PDFs available in the build environment (including the 
 
 Changes on 2026-10-10:
 
+- **Corpus regression runner added.** `scripts/evaluate_corpus.py` runs the actual remediation pipeline over a separately maintained corpus, pins every input by SHA-256, requires provenance/licence metadata, checks declared structure and issue expectations plus unchanged rendering/text, and emits JSON/CSV reports. Its tests use generated fixtures only; no third-party PDFs are committed and a real-world corpus evaluation is still pending. See [`corpus-regression.md`](corpus-regression.md).
+- **Modular OCR and table engine integrated.** The built-in tagger is split into layout, table detection, model, and structure-writing modules. Synthetic regressions cover ruled tables, spans, borderless tables, and two-column prose controls. OCR support and checksum-verified Java engine installation are included, with optional-tool tests skipped when those tools are unavailable.
 - **OCR uses RapidOCR, not OCRmyPDF.** RapidOCR is Apache-2.0, its models ship inside the wheel, and it needs no Ghostscript (AGPL) or system packages. This removes risk R11 for the default install. Tesseract stays available as an optional engine.
 - **OCR'd documents use the built-in engine in `auto` mode.** This follows a measurement: OpenDataLoader tagged the scan image as a Figure and changed the OCR text, so the text gate failed.
 - **Table tagging measured on synthetic fixtures.** On four test tables, the built-in engine was correct on all four. OpenDataLoader missed the borderless table and tagged two sub-headings as data cells. Four synthetic tables do not establish which engine is better on real documents. That comparison belongs in the G0 evaluation corpus.

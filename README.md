@@ -17,6 +17,7 @@ Everything runs on your own computer or server. Documents are never sent anywher
 ## Contents
 
 - [What it does](#what-it-does)
+- [What was added and what is pending](#what-was-added-and-what-is-pending)
 - [Install](#install)
 - [Use it](#use-it)
 - [Engines: OCR, structure, validation](#engines-ocr-structure-validation)
@@ -51,6 +52,18 @@ Each file then goes through these steps:
    - A rendering gate: every page must look identical to the input.
    - A text gate: the extracted text must be unchanged.
 8. **Report** in HTML and JSON, plus a `summary.csv` per batch. The status has three parts: **machine validation** (veraPDF), **issues** (mapped to WCAG success criteria and Matterhorn checkpoints), and **human verification**, which stays "not done" until a person reviews the file. The tool never calls a document "compliant".
+
+## What was added and what is pending
+
+**Implemented in the current prototype:**
+
+- A modular built-in tagging pipeline for layout, content structure, and PDF writing.
+- Ruled-table detection with merged cells and multi-row headers, plus guarded detection of borderless aligned tables. Uncertain aligned layouts are left for review rather than automatically tagged.
+- OCR for pages without a usable text layer (RapidOCR by default; Tesseract optional), with an invisible text layer and preservation gates. Automatic engine selection uses the built-in tagger for OCR output.
+- Java engine setup with checksum-verified veraPDF downloads, alongside the existing OpenDataLoader adapter.
+- A local corpus regression runner (`scripts/evaluate_corpus.py`) that checks input SHA-256 hashes, records source/licence metadata, verifies declared tag expectations and visual/text preservation, and writes JSON/CSV results. See [`docs/corpus-regression.md`](docs/corpus-regression.md).
+
+**Still pending:** a licensed and annotated real-world evaluation corpus, measurement of accuracy across document categories, OCR evaluation on real-world scans, and the advanced structure editors and workflow features listed under [What is missing](#what-is-missing-and-needs-work) and in [`docs/PLAN.md`](docs/PLAN.md). The runner is implemented, but no real-world PDFs are included in this repository; checked-in regression fixtures are synthetic. Do not interpret fixture or smoke-test results as a corpus-wide accuracy benchmark.
 
 ## Install
 
@@ -314,7 +327,7 @@ pip install -e ".[dev,all]" && pdfrem install-engines
 pytest                         # tests that need veraPDF or an OCR engine skip when it is missing
 ```
 
-For a separately licensed real-world corpus, see [`docs/corpus-regression.md`](docs/corpus-regression.md) and run `python scripts/evaluate_corpus.py --corpus-dir <corpus> --output-dir <results>`.
+For a separately licensed real-world corpus, see [`docs/corpus-regression.md`](docs/corpus-regression.md) and run `python scripts/evaluate_corpus.py --corpus-dir <corpus> --output-dir <results>`. The regression runner was exercised with generated fixtures; a real-world corpus run remains pending. Tests requiring veraPDF or an installed OCR engine are skipped when those optional tools are unavailable.
 
 Package layout (`src/pdf_remediation/`):
 
