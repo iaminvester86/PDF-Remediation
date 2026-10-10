@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pikepdf
+from reportlab.pdfgen import canvas
 
 from pdf_remediation.edit import apply_figure_decisions
 from pdf_remediation.pipeline import Options, remediate_file
@@ -35,6 +36,28 @@ def test_basic_engine_structure(sample_pdf, tmp_path, settings):
         assert "/Outlines" in pdf.Root  # bookmarks from headings on multi-page documents
         annot = pdf.pages[0].Annots[0]
         assert "/StructParent" in annot and str(annot.Contents)
+
+
+def test_basic_engine_detects_simple_table_layout(tmp_path, settings):
+    src = tmp_path / "table.pdf"
+    c = canvas.Canvas(str(src))
+    header = ("Name", "Score", "Status")
+    rows = (("Alice", "91", "Pass"), ("Bob", "78", "Review"), ("Cara", "94", "Pass"))
+    c.setFont("Times-Bold", 12)
+    for col_index, text in enumerate(header):
+        c.drawString(72 + col_index * 140, 760, text)
+    for row_index, row in enumerate(rows, start=1):
+        c.setFont("Times-Roman", 11)
+        for col_index, text in enumerate(row):
+            c.drawString(72 + col_index * 140, 760 - row_index * 36, text)
+    c.save()
+
+    out = tmp_path / "out" / "table.pdf"
+    r = remediate_file(src, out, display_name="table.pdf", settings=settings,
+                       options=Options(engine="basic", verapdf=False))
+    assert r["status"] != "failed", r.get("error")
+    roles_out = roles(out)
+    assert "Table" in roles_out and "TR" in roles_out and "TH" in roles_out and "TD" in roles_out
 
 
 def test_missing_alt_is_reported_then_fixed(sample_pdf, tmp_path, settings, need_verapdf):

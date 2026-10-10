@@ -231,6 +231,107 @@ def _hf_key(text: str) -> str:
     return _DIGITS.sub("#", text.strip().lower())
 
 
+def _cluster_positions(values: list[float], default_gap: float = 18.0) -> list[list[float]]:
+    if not values:
+        return []
+    ordered = sorted(values)
+    clusters: list[list[float]] = [[ordered[0]]]
+    span = max(ordered[-1] - ordered[0], 1.0)
+    for value in ordered[1:]:
+        gap = value - clusters[-1][-1]
+        if gap <= max(default_gap, 0.12 * span):
+            clusters[-1].append(value)
+        else:
+            clusters.append([value])
+    return clusters
+
+
+def _read_order_sort(blocks: list[Block]) -> list[Block]:
+    if len(blocks) < 2:
+        return blocks
+    text_blocks = [b for b in blocks if b.kind == "text" and b.text.strip()]
+    if not text_blocks:
+        return blocks
+    tops = [b.bbox[3] for b in text_blocks]
+    row_clusters = _cluster_positions(tops, default_gap=18.0)
+    row_index: dict[int, int] = {}
+    for idx, cluster in enumerate(row_clusters):
+        lo, hi = min(cluster), max(cluster)
+        for b in text_blocks:
+            top = b.bbox[3]
+            if lo <= top <= hi:
+                row_index[id(b)] = len(row_clusters) - 1 - idx
+    def key(block: Block):
+        if block.kind != "text":
+            return (1_000_000, 1_000_000, 0)
+        row = row_index.get(id(block), 0)
+        return (row, block.bbox[0], block.bbox[1])
+    return sorted(blocks, key=key)
+
+
+def _detect_table_layout(blocks: list[Block]) -> dict | None:
+    text_blocks = [b for b in blocks if b.kind == "text" and b.text.strip() and len(b.text) < 200]
+    if len(text_blocks) < 4:
+        return None
+    x_centers = [(b.bbox[0] + b.bbox[2]) / 2 for b in text_blocks]
+    x_clusters = _cluster_positions(x_centers, default_gap=22.0)
+    if len(x_clusters) < 2:
+        return None
+    rows: list[dict] = []
+    for b in text_blocks:
+        cy = (b.bbox[1] + b.bbox[3]) / 2
+        row = next((r for r in rows if abs(cy - r["mid"]) <= max(8.0, b.size * 0.8)), None)
+        if row is None:
+            rows.append({"mid": cy, "blocks": [b]})
+        else:
+            row["blocks"].append(b)
+    rows = sorted(rows, key=lambda r: r["mid"], reverse=True)
+    valid_rows: list[list[list[Block]]] = []
+    for row in rows:
+        by_col: dict[int, list[Block]] = {}
+        for b in row["blocks"]:
+            cx = (b.bbox[0] + b.bbox[2]) / 2
+            col = next((i for i, cluster in enumerate(x_clusters) if min(cluster) <= cx <= max(cluster)), 0)
+            by_col.setdefault(col, []).append(b)
+        if len(by_col) >= 2:
+            valid_rows.append([by_col[i] for i in sorted(by_col)])
+    if len(valid_rows) < 3:
+        return None
+    flat = [b for row in valid_rows for col in row for b in col]
+    if len(flat) < 6:
+        return None
+    unique: list[Block] = []
+    seen: set[int] = set()
+    for block in flat:
+        key = id(block)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(block)
+    return {"rows": valid_rows, "blocks": unique}
+
+
+def _build_table_nodes(page: int, rows: list[list[list[Block]]]) -> list[Node]:
+    nodes: list[Node] = []
+    table = Node("Table", page)
+    for row_index, row in enumerate(rows):
+        tr = Node("TR", page)
+        for col_index, cells in enumerate(row):
+            block_text = " ".join(block.text for block in cells if block.text).strip()
+            header = row_index == 0 or all(block.bold for block in cells if block.kind == "text")
+            cell = Node("TH" if header else "TD", page, text=block_text)
+            cell.bbox = (min(b.bbox[0] for b in cells), min(b.bbox[1] for b in cells),
+                         max(b.bbox[2] for b in cells), max(b.bbox[3] for b in cells))
+            for block in cells:
+                for it in block.items:
+                    it.owner = cell
+                    cell.kids.append(it)
+            tr.kids.append(cell)
+        table.kids.append(tr)
+    nodes.append(table)
+    return nodes
+
+
 # ---------------------------------------------------------------------------
 # main entry
 
@@ -332,7 +433,7 @@ def tag_document(pdf: pikepdf.Pdf, pdfium_doc: pdfium.PdfDocument) -> TagResult:
                         if area / page_area > 0.8:
                             text_area = -1.0
             ordered.sort(key=lambda t: t[0])
-            blocks = [b for _, b in ordered]
+            blocks = _read_order_sort([b for _, b in ordered])
             if text_area < 0 and not content_lines:
                 result.issues.append(Issue(
                     "tagger.scanned-page", "error",
@@ -354,14 +455,14 @@ def tag_document(pdf: pikepdf.Pdf, pdfium_doc: pdfium.PdfDocument) -> TagResult:
                     ordered.append(Block(idx, "figure", item=it, role="Figure"))
                 elif it.kind == "form":
                     ordered.append(Block(idx, "form-text", item=it))
-            blocks = ordered
+            blocks = _read_order_sort(ordered)
         page_blocks.append(blocks)
 
     # Heading levels (global)
     heading_keys: set[float] = set()
     for blocks in page_blocks:
         for b in blocks:
-            if b.kind != "text" or b.marker:
+            if b.role == "TableCell" or b.kind != "text" or b.marker:
                 continue
             text = b.text
             size = b.size
@@ -394,6 +495,9 @@ def tag_document(pdf: pikepdf.Pdf, pdfium_doc: pdfium.PdfDocument) -> TagResult:
     i = 0
     while i < len(flat):
         b = flat[i]
+        if b.role == "TableCell":
+            i += 1
+            continue
         if b.kind == "text" and b.marker:
             j = i
             while j < len(flat) and flat[j].kind == "text" and flat[j].marker == b.marker:
@@ -411,7 +515,14 @@ def tag_document(pdf: pikepdf.Pdf, pdfium_doc: pdfium.PdfDocument) -> TagResult:
     open_list: Node | None = None
     for idx, page in enumerate(pdf.pages):
         page_nodes: list[Node] = []
+        table_plan = _detect_table_layout(page_blocks[idx])
+        if table_plan:
+            for b in table_plan["blocks"]:
+                b.role = "TableCell"
+            page_nodes.extend(_build_table_nodes(idx, table_plan["rows"]))
         for b in page_blocks[idx]:
+            if b.role == "TableCell":
+                continue
             if b.role == "LI":
                 if open_list is None:
                     numbering = "/Disc" if b.marker == "bullet" else "/Decimal"
@@ -454,7 +565,7 @@ def tag_document(pdf: pikepdf.Pdf, pdfium_doc: pdfium.PdfDocument) -> TagResult:
                 f["context"] = _figure_context(page_blocks[idx], f["bbox"])
 
         # Possible tables: several rows with 2+ text blocks sharing a baseline
-        if page_matched[idx]:
+        if page_matched[idx] and not table_plan:
             rows: dict[int, int] = defaultdict(int)
             for b in page_blocks[idx]:
                 if b.kind == "text" and len(b.lines) == 1:
