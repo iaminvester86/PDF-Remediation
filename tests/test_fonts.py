@@ -5,7 +5,7 @@ import re
 
 import pikepdf
 
-from pdf_remediation.pdfium_util import page_texts
+from pdf_remediation.pdf.pdfium import page_texts
 from pdf_remediation.pipeline import Options, remediate_file
 
 

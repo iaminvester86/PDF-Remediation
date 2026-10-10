@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "pdf-remediation"
 version = "0.1.0"
-description = "Local-first PDF accessibility remediation (PDF/UA-1) with an accessible web UI and CLI"
+description = "Local-first PDF accessibility remediation (PDF/UA-1): OCR, tagging, tables, validation, review UI and CLI"
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.11"
@@ -29,10 +29,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# OpenDataLoader structure engine (Apache-2.0, needs Java 11+).
+# OCR for scanned pages, pure Python: RapidOCR (Apache-2.0) on ONNX Runtime (MIT). Models ship in the wheel.
+ocr = ["rapidocr>=3.0", "onnxruntime>=1.17"]
+# Alternative OCR engine; also needs the Tesseract program and language packs installed.
+tesseract = ["pytesseract>=0.3.10"]
+# OpenDataLoader structure engine (Apache-2.0); needs Java 11+.
 odl = ["opendataloader-pdf>=2.5"]
-# OCR for scanned pages (MPL-2.0; needs Tesseract and Ghostscript installed separately).
-ocr = ["ocrmypdf>=16"]
+all = ["pdf-remediation[ocr,odl]"]
 dev = ["pytest>=8", "reportlab>=4"]
 
 [project.scripts]

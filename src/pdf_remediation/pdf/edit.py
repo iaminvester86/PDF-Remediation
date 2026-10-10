@@ -7,7 +7,7 @@ from pathlib import Path
 import pikepdf
 from pikepdf import Array, Name, String
 
-from .structtree import figures, read_tree
+from .structure import figures, read_tree
 
 
 def _number_tree_get(node, key: int):
@@ -31,7 +31,7 @@ def _number_tree_get(node, key: int):
 def apply_figure_decisions(src: Path, dst: Path, alts: dict[int, str], decorative: set[int]) -> dict:
     """Set /Alt on figures (by index) and convert decorative figures to artifacts.
 
-    Figure indices follow structtree.figures() order, the same order QA reports.
+    Figure indices follow structure.figures() order, the same order the checks report.
     """
     pdf = pikepdf.open(src, allow_overwriting_input=True)
     tree = read_tree(pdf)

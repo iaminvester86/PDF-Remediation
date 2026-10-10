@@ -12,6 +12,4 @@ spikes/*/out/
 spikes/*/lib/
 spikes/*/target/
 
-# Downloaded third-party tools (scripts/fetch-verapdf.sh)
-vendor/
 pdfrem-data/

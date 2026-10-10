@@ -12,7 +12,7 @@ from pathlib import Path
 import pikepdf
 from pikepdf import Dictionary, Name, String
 
-from .issues import Issue
+from ..issues import Issue
 
 GENERIC_TITLE_RE = re.compile(
     r"^\s*$|^(untitled|document\d*|microsoft (word|powerpoint|excel)\b.*|.*\.(docx?|pptx?|xlsx?|pdf|indd|tmp))$",

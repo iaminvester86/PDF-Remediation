@@ -45,8 +45,9 @@ Why it matters: companies and governments adopting an Apache-2.0 tool expect to 
 
 | Library | Version | Licence | Decision |
 |---|---|---|---|
-| **OCRmyPDF** + **Tesseract** | 17.13.0 | MPL-2.0 / Apache-2.0 | **Default OCR.** Produces the text layer, which we then tag. Needs Ghostscript (AGPL, external program). Document how to install it, and ship it only in container images with licence text. |
-| **RapidOCR** (ONNX) | 3.10.0 | Apache-2.0 | Lightweight alternative engine, CPU-friendly |
+| **RapidOCR** (ONNX) | 3.10.0 | Apache-2.0 | **Default OCR (selected 2026-10-10).** Pure Python wheels on ONNX Runtime (MIT), with PP-OCRv6 models bundled. No system packages. The app writes its own invisible text layer. |
+| **Tesseract** via pytesseract | 5.x / 0.3.x | Apache-2.0 | Optional engine for languages the RapidOCR model does not cover. Needs the `tesseract` program. |
+| **OCRmyPDF** | 17.13.0 | MPL-2.0 | Not used. It needs Ghostscript (AGPL) for its default output, and the app needs only a text layer, which it writes itself. |
 | **PaddleOCR** | 3.7.0 | Apache-2.0 | Higher accuracy option, heavier |
 | **EasyOCR** | 1.7.2 | Apache-2.0 | ODL hybrid default |
 | **python-doctr** | 1.1.0 | Apache-2.0 | Alternative |
@@ -97,9 +98,35 @@ OCR output must carry per-word confidence. Low-confidence pages go to the human 
 
 1. **Validation:** veraPDF (Java). Accept a Java runtime.
 2. **Default structure engine:** OpenDataLoader (Java core with Python wrapper). The same Java runtime covers both.
-3. **OCR binaries:** Tesseract (C++), Ghostscript (C). These are system packages.
+3. **OCR binaries:** none in the default install, since RapidOCR is pip-installable. Tesseract (C++) is a system package, needed only if that optional engine is chosen.
 
 So the stack is "Python application, Java and C sidecars". Distribution must therefore be a container image or an installer that bundles a JRE. The plan provides both, plus a pip install for developers.
+
+### 3.1 OCR dependency closure (checked 2026-10-10)
+
+`pip install ".[ocr]"` adds these packages:
+
+| Package | Licence |
+|---|---|
+| rapidocr | Apache-2.0 |
+| onnxruntime | MIT |
+| opencv-python-headless | Apache-2.0 |
+| shapely | BSD-3-Clause |
+| pyclipper | MIT |
+| omegaconf | BSD |
+| PyYAML | MIT |
+| colorlog | MIT |
+| tqdm | MPL-2.0 AND MIT |
+| protobuf | BSD-3-Clause |
+| flatbuffers | Apache-2.0 |
+| numpy | BSD-3-Clause and others |
+
+`pip-licenses` finds no GPL or unknown licence in the core plus OCR closure, and the CI licence gate enforces that. That gate reads package metadata only, which leaves two gaps:
+
+- **opencv-python-headless:** the wheels bundle third-party libraries, including FFmpeg under LGPL-2.1. LGPL shared libraries loaded at run time are compatible with Apache-2.0 distribution, but their licence texts must ship with any bundle.
+- **pypdfium2:** bundles PDFium, whose third-party licences are listed in the wheel.
+
+The SBOM work (section 4) should record these bundled components.
 
 ## 4. Supply-chain controls (required for government buyers)
 

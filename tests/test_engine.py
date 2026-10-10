@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import pikepdf
 
-from pdf_remediation.edit import apply_figure_decisions
+from pdf_remediation.pdf.edit import apply_figure_decisions
 from pdf_remediation.pipeline import Options, remediate_file
-from pdf_remediation.qa import run_qa
-from pdf_remediation.structtree import read_tree
+from pdf_remediation.checks import run_qa
+from pdf_remediation.pdf.structure import read_tree
 
 
 def roles(path):
@@ -58,7 +58,7 @@ def test_decorative_figure_becomes_artifact(sample_pdf, tmp_path, settings, need
     info = apply_figure_decisions(out, out, {}, {0})
     assert info["decorative"] == 1 and not info["errors"]
     assert "Figure" not in roles(out)
-    from pdf_remediation.verify import run_verapdf
+    from pdf_remediation.checks import run_verapdf
     assert run_verapdf(out, settings)["compliant"] is True
 
 

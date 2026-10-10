@@ -19,6 +19,8 @@
     {% endif %}
     {% if r.facts %}<div><dt>Pages</dt><dd>{{ r.facts.pages }}</dd></div>{% endif %}
     {% if r.engine %}<div><dt>Structure engine</dt><dd>{{ r.engine }}</dd></div>{% endif %}
+    {% if r.ocr %}<div><dt>OCR</dt><dd>Page(s) {{ r.ocr.pages|join(', ') }} recognised with {{ r.ocr.engine }}
+      ({{ r.ocr.lines }} lines). Proofread recognised text.</dd></div>{% endif %}
   </dl>
   <p class="hint">A machine pass means the file meets the PDF/UA-1 checks a computer can make. It does not
     prove the document is accessible: only human review can confirm that alt text, headings and reading order

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import pikepdf
 
-from .contentscan import SHOW_OPS
+from .content import SHOW_OPS
 
 TEXT_STATE_OPS = {"Tc", "Tw", "Tz", "TL", "Ts", "Tr", "Tf"}
 

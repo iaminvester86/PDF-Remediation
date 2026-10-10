@@ -21,7 +21,7 @@ STATUS_LABELS = {
 def env() -> Environment:
     global _env
     if _env is None:
-        _env = Environment(loader=PackageLoader("pdf_remediation", "templates"),
+        _env = Environment(loader=PackageLoader("pdf_remediation", "web/templates"),
                            autoescape=select_autoescape(["html"]), trim_blocks=True, lstrip_blocks=True)
         _env.globals["status_label"] = lambda s: STATUS_LABELS.get(s, s)
     return _env
@@ -38,6 +38,6 @@ def write_reports(result: dict, out_pdf: Path) -> None:
     result["outputs"]["report_json"] = jpath.name
     result["outputs"]["report_html"] = hpath.name
     jpath.write_text(json.dumps(result, indent=2, default=str), encoding="utf-8")
-    css = (Path(__file__).parent / "static" / "app.css").read_text(encoding="utf-8")
+    css = (Path(__file__).parent / "web" / "static" / "app.css").read_text(encoding="utf-8")
     html = env().get_template("report_standalone.html").render(r=result, css=css)
     hpath.write_text(html, encoding="utf-8")
